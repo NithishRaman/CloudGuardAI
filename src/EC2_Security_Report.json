@@ -1,0 +1,14 @@
+[
+    {
+        "resource": "i-0e487ca52c43ba919",
+        "issue": "Public IP exposed",
+        "risk": "MEDIUM",
+        "recommendation": "Review if public access is required"
+    },
+    {
+        "resource": "i-04b03d3b4dd19601d",
+        "issue": "Public IP exposed",
+        "risk": "MEDIUM",
+        "recommendation": "Review if public access is required"
+    }
+]

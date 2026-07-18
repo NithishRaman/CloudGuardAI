@@ -1,0 +1,141 @@
+{
+    "project": "CloudGuardAI",
+    "generated_time": "2026-07-18 16:15:32.756932",
+    "security_score": 35,
+    "security_grade": "D",
+    "risk_summary": {
+        "CRITICAL": 12,
+        "HIGH": 4,
+        "MEDIUM": 1,
+        "LOW": 1
+    },
+    "total_findings": 18,
+    "findings": [
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "event": "ListAlarmMuteRules",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "event": "ListAlarmMuteRules",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail"
+        },
+        {
+            "user": "cloudguard-admin",
+            "issue": "MFA Disabled",
+            "risk": "HIGH",
+            "recommendation": "Enable MFA for this IAM user",
+            "type": "IAM"
+        },
+        {
+            "user": "cloudguard-admin",
+            "issue": "AdministratorAccess Policy",
+            "risk": "CRITICAL",
+            "recommendation": "Remove excessive admin permissions and follow least privilege",
+            "type": "IAM"
+        },
+        {
+            "user": "Nithish",
+            "issue": "MFA Disabled",
+            "risk": "HIGH",
+            "recommendation": "Enable MFA for this IAM user",
+            "type": "IAM"
+        },
+        {
+            "user": "Nithish",
+            "issue": "AdministratorAccess Policy",
+            "risk": "CRITICAL",
+            "recommendation": "Remove excessive admin permissions and follow least privilege",
+            "type": "IAM"
+        },
+        {
+            "resource": "i-04b03d3b4dd19601d",
+            "issue": "Public IP exposed",
+            "risk": "MEDIUM",
+            "recommendation": "Review if public access is required",
+            "type": "EC2"
+        },
+        {
+            "type": "Compliance",
+            "issue": "IAM MFA Enabled",
+            "resource": "cloudguard-admin",
+            "status": "FAIL",
+            "risk": "HIGH"
+        },
+        {
+            "type": "Compliance",
+            "issue": "IAM MFA Enabled",
+            "resource": "Nithish",
+            "status": "FAIL",
+            "risk": "HIGH"
+        },
+        {
+            "type": "Compliance",
+            "issue": "CloudTrail Enabled",
+            "resource": "AWS",
+            "status": "PASS",
+            "risk": "LOW"
+        }
+    ]
+}

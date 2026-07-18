@@ -1,0 +1,66 @@
+{
+    "project": "CloudGuardAI",
+    "generated_time": "2026-07-18 16:40:48.419794",
+    "findings": [
+        {
+            "event": "ListAlarmMuteRules",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected"
+        },
+        {
+            "event": "AssumeRole",
+            "user": "Unknown",
+            "risk": "LOW",
+            "reason": "Normal activity"
+        },
+        {
+            "event": "DescribeInstances",
+            "user": "AutoScaling",
+            "risk": "LOW",
+            "reason": "Normal activity"
+        },
+        {
+            "event": "ListAlarmMuteRules",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected"
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected"
+        }
+    ]
+}

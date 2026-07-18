@@ -1,0 +1,19 @@
+[
+    {
+        "check": "IAM MFA Enabled",
+        "resource": "cloudguard-admin",
+        "status": "FAIL",
+        "risk": "HIGH"
+    },
+    {
+        "check": "IAM MFA Enabled",
+        "resource": "Nithish",
+        "status": "FAIL",
+        "risk": "HIGH"
+    },
+    {
+        "check": "CloudTrail Enabled",
+        "status": "PASS",
+        "risk": "LOW"
+    }
+]

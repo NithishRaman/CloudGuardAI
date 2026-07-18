@@ -1,0 +1,26 @@
+[
+    {
+        "user": "cloudguard-admin",
+        "issue": "MFA Disabled",
+        "risk": "HIGH",
+        "recommendation": "Enable MFA for this IAM user"
+    },
+    {
+        "user": "cloudguard-admin",
+        "issue": "AdministratorAccess Policy",
+        "risk": "CRITICAL",
+        "recommendation": "Remove excessive admin permissions and follow least privilege"
+    },
+    {
+        "user": "Nithish",
+        "issue": "MFA Disabled",
+        "risk": "HIGH",
+        "recommendation": "Enable MFA for this IAM user"
+    },
+    {
+        "user": "Nithish",
+        "issue": "AdministratorAccess Policy",
+        "risk": "CRITICAL",
+        "recommendation": "Remove excessive admin permissions and follow least privilege"
+    }
+]
