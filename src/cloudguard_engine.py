@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from remediation_engine import generate_fix
 
 
 print("===== CloudGuardAI Security Engine =====")
@@ -8,96 +9,66 @@ print("===== CloudGuardAI Security Engine =====")
 final_findings = []
 
 
+def load_report(filename, finding_type):
+    try:
+        with open(filename, "r") as file:
+            report = json.load(file)
+
+            for finding in report:
+                finding["type"] = finding_type
+                final_findings.append(finding)
+
+    except FileNotFoundError:
+        print(f"{filename} not found")
+
+
 # -----------------------------
 # Load CloudTrail Report
 # -----------------------------
 
 try:
-
     with open("CloudGuardAI_Report.json", "r") as file:
 
         cloudtrail_report = json.load(file)
 
-        for finding in cloudtrail_report["findings"]:
+        for finding in cloudtrail_report.get("findings", []):
 
             finding["type"] = "CloudTrail"
 
             final_findings.append(finding)
 
-
 except FileNotFoundError:
-
     print("CloudTrail report not found")
-
 
 
 # -----------------------------
 # Load IAM Report
 # -----------------------------
 
-try:
-
-    with open("IAM_Security_Report.json", "r") as file:
-
-        iam_report = json.load(file)
-
-        for finding in iam_report:
-
-            finding["type"] = "IAM"
-
-            final_findings.append(finding)
-
-
-except FileNotFoundError:
-
-    print("IAM report not found")
-
+load_report(
+    "IAM_Security_Report.json",
+    "IAM"
+)
 
 
 # -----------------------------
 # Load EC2 Report
 # -----------------------------
 
-try:
-
-    with open("EC2_Security_Report.json", "r") as file:
-
-        ec2_report = json.load(file)
-
-        for finding in ec2_report:
-
-            finding["type"] = "EC2"
-
-            final_findings.append(finding)
-
-
-except FileNotFoundError:
-
-    print("EC2 report not found")
-
+load_report(
+    "EC2_Security_Report.json",
+    "EC2"
+)
 
 
 # -----------------------------
 # Load S3 Report
 # -----------------------------
 
-try:
-
-    with open("S3_Security_Report.json", "r") as file:
-
-        s3_report = json.load(file)
-
-        for finding in s3_report:
-
-            finding["type"] = "S3"
-
-            final_findings.append(finding)
-
-
-except FileNotFoundError:
-
-    print("S3 report not found")
-
+load_report(
+    "S3_Security_Report.json",
+    "S3"
+)
 
 
 # -----------------------------
@@ -110,7 +81,6 @@ try:
 
         compliance_report = json.load(file)
 
-
         for finding in compliance_report:
 
             final_findings.append({
@@ -119,11 +89,7 @@ try:
 
                 "issue": finding.get("check"),
 
-                "resource": finding.get("resource", "AWS"),
-
-                "status": finding.get("status"),
-
-                "risk": finding.get("risk")
+                "details": finding.get("details")
 
             })
 
@@ -133,30 +99,43 @@ except FileNotFoundError:
     print("Compliance report not found")
 
 
+# -----------------------------
+# Add Remediation
+# -----------------------------
+
+for finding in final_findings:
+
+    finding["remediation"] = generate_fix(finding)
+
+
 
 # -----------------------------
-# Risk Summary
+# Risk Analysis
 # -----------------------------
 
 risk_summary = {
 
-    "CRITICAL": 0,
-    "HIGH": 0,
-    "MEDIUM": 0,
-    "LOW": 0
+    "Critical": 0,
+
+    "High": 0,
+
+    "Medium": 0,
+
+    "Low": 0
 
 }
 
 
-
 for finding in final_findings:
 
-    risk = finding.get("risk")
+    severity = finding.get(
+        "severity",
+        "Medium"
+    )
 
+    if severity in risk_summary:
 
-    if risk in risk_summary:
-
-        risk_summary[risk] += 1
+        risk_summary[severity] += 1
 
 
 
@@ -167,52 +146,32 @@ for finding in final_findings:
 security_score = 100
 
 
-unique_findings = set()
-
-
-
 for finding in final_findings:
 
-    name = (
-
-        finding.get("issue")
-        or finding.get("event")
-        or finding.get("check")
-
-    )
-
-    risk = finding.get("risk")
-
-
-    unique_findings.add(
-        (name, risk)
+    severity = finding.get(
+        "severity",
+        "Medium"
     )
 
 
+    if severity == "Critical":
 
-for item in unique_findings:
-
-    risk = item[1]
-
-
-    if risk == "CRITICAL":
-
-        security_score -= 15
+        security_score -= 20
 
 
-    elif risk == "HIGH":
+    elif severity == "High":
 
-        security_score -= 8
-
-
-    elif risk == "MEDIUM":
-
-        security_score -= 3
+        security_score -= 10
 
 
-    elif risk == "LOW":
+    elif severity == "Medium":
 
-        security_score -= 1
+        security_score -= 5
+
+
+    elif severity == "Low":
+
+        security_score -= 2
 
 
 
@@ -230,21 +189,17 @@ if security_score >= 90:
 
     grade = "A"
 
-
 elif security_score >= 75:
 
     grade = "B"
-
 
 elif security_score >= 50:
 
     grade = "C"
 
-
 elif security_score >= 25:
 
     grade = "D"
-
 
 else:
 
@@ -288,7 +243,6 @@ with open(
     )
 
 
-
 print("\nFinal CloudGuardAI Report Generated")
 
 print("Total Findings:", len(final_findings))
@@ -300,8 +254,4 @@ print("Security Grade:", grade)
 print("Risk Summary:", risk_summary)
 
 print("Saved: FINAL_CLOUDGUARD_AI_REPORT.json")
-
-
-
-
 

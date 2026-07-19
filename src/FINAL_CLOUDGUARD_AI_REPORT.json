@@ -1,141 +1,218 @@
 {
     "project": "CloudGuardAI",
-    "generated_time": "2026-07-18 16:15:32.756932",
-    "security_score": 35,
-    "security_grade": "D",
+    "generated_time": "2026-07-19 11:46:29.477390",
+    "security_score": 5,
+    "security_grade": "F",
     "risk_summary": {
-        "CRITICAL": 12,
-        "HIGH": 4,
-        "MEDIUM": 1,
-        "LOW": 1
+        "Critical": 0,
+        "High": 0,
+        "Medium": 19,
+        "Low": 0
     },
-    "total_findings": 18,
+    "total_findings": 19,
     "findings": [
         {
+            "event": "ListAlarmMuteRules",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
+        },
+        {
             "event": "DescribeAlarms",
             "user": "root",
             "risk": "CRITICAL",
             "reason": "Root account activity detected",
-            "type": "CloudTrail"
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
+        },
+        {
+            "event": "DescribeAlarms",
+            "user": "root",
+            "risk": "CRITICAL",
+            "reason": "Root account activity detected",
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
+        },
+        {
+            "event": "AssumeRole",
+            "user": "Unknown",
+            "risk": "LOW",
+            "reason": "Normal activity",
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
+        },
+        {
+            "event": "DescribeInstances",
+            "user": "AutoScaling",
+            "risk": "LOW",
+            "reason": "Normal activity",
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
         },
         {
             "event": "ListAlarmMuteRules",
             "user": "root",
             "risk": "CRITICAL",
             "reason": "Root account activity detected",
-            "type": "CloudTrail"
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
         },
         {
             "event": "DescribeAlarms",
             "user": "root",
             "risk": "CRITICAL",
             "reason": "Root account activity detected",
-            "type": "CloudTrail"
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
         },
         {
             "event": "DescribeAlarms",
             "user": "root",
             "risk": "CRITICAL",
             "reason": "Root account activity detected",
-            "type": "CloudTrail"
-        },
-        {
-            "event": "DescribeAlarms",
-            "user": "root",
-            "risk": "CRITICAL",
-            "reason": "Root account activity detected",
-            "type": "CloudTrail"
-        },
-        {
-            "event": "ListAlarmMuteRules",
-            "user": "root",
-            "risk": "CRITICAL",
-            "reason": "Root account activity detected",
-            "type": "CloudTrail"
-        },
-        {
-            "event": "DescribeAlarms",
-            "user": "root",
-            "risk": "CRITICAL",
-            "reason": "Root account activity detected",
-            "type": "CloudTrail"
-        },
-        {
-            "event": "DescribeAlarms",
-            "user": "root",
-            "risk": "CRITICAL",
-            "reason": "Root account activity detected",
-            "type": "CloudTrail"
-        },
-        {
-            "event": "DescribeAlarms",
-            "user": "root",
-            "risk": "CRITICAL",
-            "reason": "Root account activity detected",
-            "type": "CloudTrail"
-        },
-        {
-            "event": "DescribeAlarms",
-            "user": "root",
-            "risk": "CRITICAL",
-            "reason": "Root account activity detected",
-            "type": "CloudTrail"
+            "type": "CloudTrail",
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
         },
         {
             "user": "cloudguard-admin",
             "issue": "MFA Disabled",
             "risk": "HIGH",
             "recommendation": "Enable MFA for this IAM user",
-            "type": "IAM"
+            "type": "IAM",
+            "remediation": {
+                "action": "Enable MFA for IAM user",
+                "command": "aws iam enable-mfa-device"
+            }
         },
         {
             "user": "cloudguard-admin",
             "issue": "AdministratorAccess Policy",
             "risk": "CRITICAL",
             "recommendation": "Remove excessive admin permissions and follow least privilege",
-            "type": "IAM"
+            "type": "IAM",
+            "remediation": {
+                "action": "Apply least privilege IAM policy",
+                "command": "Review and replace AdministratorAccess"
+            }
         },
         {
             "user": "Nithish",
             "issue": "MFA Disabled",
             "risk": "HIGH",
             "recommendation": "Enable MFA for this IAM user",
-            "type": "IAM"
+            "type": "IAM",
+            "remediation": {
+                "action": "Enable MFA for IAM user",
+                "command": "aws iam enable-mfa-device"
+            }
         },
         {
             "user": "Nithish",
             "issue": "AdministratorAccess Policy",
             "risk": "CRITICAL",
             "recommendation": "Remove excessive admin permissions and follow least privilege",
-            "type": "IAM"
+            "type": "IAM",
+            "remediation": {
+                "action": "Apply least privilege IAM policy",
+                "command": "Review and replace AdministratorAccess"
+            }
+        },
+        {
+            "resource": "i-0e487ca52c43ba919",
+            "issue": "Public IP exposed",
+            "risk": "MEDIUM",
+            "recommendation": "Review if public access is required",
+            "type": "EC2",
+            "remediation": {
+                "action": "Restrict public access",
+                "command": "Review Security Group inbound rules"
+            }
         },
         {
             "resource": "i-04b03d3b4dd19601d",
             "issue": "Public IP exposed",
             "risk": "MEDIUM",
             "recommendation": "Review if public access is required",
-            "type": "EC2"
+            "type": "EC2",
+            "remediation": {
+                "action": "Restrict public access",
+                "command": "Review Security Group inbound rules"
+            }
         },
         {
             "type": "Compliance",
             "issue": "IAM MFA Enabled",
-            "resource": "cloudguard-admin",
-            "status": "FAIL",
-            "risk": "HIGH"
+            "details": null,
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
         },
         {
             "type": "Compliance",
             "issue": "IAM MFA Enabled",
-            "resource": "Nithish",
-            "status": "FAIL",
-            "risk": "HIGH"
+            "details": null,
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
         },
         {
             "type": "Compliance",
             "issue": "CloudTrail Enabled",
-            "resource": "AWS",
-            "status": "PASS",
-            "risk": "LOW"
+            "details": null,
+            "remediation": {
+                "action": "Review security configuration",
+                "command": "Manual investigation required"
+            }
         }
     ]
 }
