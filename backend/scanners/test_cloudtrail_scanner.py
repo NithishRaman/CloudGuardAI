@@ -1,65 +1,155 @@
+from unittest.mock import MagicMock, patch
+
 from backend.scanners.cloudtrail_scanner import (
     CloudTrailScanner,
 )
 
 
-def main():
+@patch("backend.scanners.cloudtrail_scanner.boto3.client")
+def test_root_activity_is_critical(mock_client):
 
-    print(
-        "===== CloudGuardAI V2 CloudTrail Scanner ====="
-    )
+    mock_cloudtrail = MagicMock()
+
+    mock_client.return_value = mock_cloudtrail
+
+    mock_cloudtrail.lookup_events.return_value = {
+        "Events": [
+            {
+                "EventName": "DescribeInstances",
+                "Username": "root",
+            }
+        ]
+    }
 
     scanner = CloudTrailScanner()
 
-    findings = scanner.scan(
-        max_results=10
+    findings = scanner.scan()
+
+    assert len(findings) == 1
+
+    assert findings[0].risk == "CRITICAL"
+
+    assert findings[0].resource == "root"
+
+
+@patch("backend.scanners.cloudtrail_scanner.boto3.client")
+def test_critical_event_detected(mock_client):
+
+    mock_cloudtrail = MagicMock()
+
+    mock_client.return_value = mock_cloudtrail
+
+    mock_cloudtrail.lookup_events.return_value = {
+        "Events": [
+            {
+                "EventName": "DeleteTrail",
+                "Username": "admin",
+            }
+        ]
+    }
+
+    scanner = CloudTrailScanner()
+
+    findings = scanner.scan()
+
+    assert len(findings) == 1
+
+    assert findings[0].risk == "CRITICAL"
+
+    assert (
+        findings[0].issue
+        == "AWS CloudTrail Event: DeleteTrail"
     )
 
-    print(
-        f"\nTotal CloudTrail findings: "
-        f"{len(findings)}"
-    )
 
-    for finding in findings:
+@patch("backend.scanners.cloudtrail_scanner.boto3.client")
+def test_high_risk_event_detected(mock_client):
 
-        print("\nFinding:")
+    mock_cloudtrail = MagicMock()
 
-        print(
-            "ID:",
-            finding.finding_id,
-        )
+    mock_client.return_value = mock_cloudtrail
 
-        print(
-            "Type:",
-            finding.finding_type,
-        )
+    mock_cloudtrail.lookup_events.return_value = {
+        "Events": [
+            {
+                "EventName": "CreateAccessKey",
+                "Username": "admin",
+            }
+        ]
+    }
 
-        print(
-            "Issue:",
-            finding.issue,
-        )
+    scanner = CloudTrailScanner()
 
-        print(
-            "Resource:",
-            finding.resource,
-        )
+    findings = scanner.scan()
 
-        print(
-            "Risk:",
-            finding.risk,
-        )
+    assert len(findings) == 1
 
-        print(
-            "Description:",
-            finding.description,
-        )
-
-        print(
-            "Remediation:",
-            finding.remediation,
-        )
+    assert findings[0].risk == "HIGH"
 
 
-if __name__ == "__main__":
+@patch("backend.scanners.cloudtrail_scanner.boto3.client")
+def test_medium_risk_event_detected(mock_client):
 
-    main()
+    mock_cloudtrail = MagicMock()
+
+    mock_client.return_value = mock_cloudtrail
+
+    mock_cloudtrail.lookup_events.return_value = {
+        "Events": [
+            {
+                "EventName": "RunInstances",
+                "Username": "developer",
+            }
+        ]
+    }
+
+    scanner = CloudTrailScanner()
+
+    findings = scanner.scan()
+
+    assert len(findings) == 1
+
+    assert findings[0].risk == "MEDIUM"
+
+
+@patch("backend.scanners.cloudtrail_scanner.boto3.client")
+def test_normal_event_is_low_risk(mock_client):
+
+    mock_cloudtrail = MagicMock()
+
+    mock_client.return_value = mock_cloudtrail
+
+    mock_cloudtrail.lookup_events.return_value = {
+        "Events": [
+            {
+                "EventName": "DescribeInstances",
+                "Username": "developer",
+            }
+        ]
+    }
+
+    scanner = CloudTrailScanner()
+
+    findings = scanner.scan()
+
+    assert len(findings) == 1
+
+    assert findings[0].risk == "LOW"
+
+
+@patch("backend.scanners.cloudtrail_scanner.boto3.client")
+def test_empty_cloudtrail_returns_no_findings(mock_client):
+
+    mock_cloudtrail = MagicMock()
+
+    mock_client.return_value = mock_cloudtrail
+
+    mock_cloudtrail.lookup_events.return_value = {
+        "Events": []
+    }
+
+    scanner = CloudTrailScanner()
+
+    findings = scanner.scan()
+
+    assert findings == []

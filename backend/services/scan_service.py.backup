@@ -1,0 +1,514 @@
+from datetime import datetime, timezone
+from typing import Any
+
+from backend.scanners.s3_scanner import S3Scanner
+from backend.scanners.iam_scanner import IAMScanner
+from backend.scanners.ec2_scanner import EC2Scanner
+from backend.scanners.cloudtrail_scanner import CloudTrailScanner
+from backend.scanners.compliance_scanner import ComplianceScanner
+
+from backend.services.security_engine import (
+    calculate_security_score,
+)
+
+from backend.services.ai_advisor import (
+    generate_security_advice,
+)
+
+
+def convert_finding_to_dict(finding: Any) -> dict:
+    """
+    Convert a SecurityFinding dataclass
+    into a normal dictionary.
+    """
+
+    if hasattr(
+        finding,
+        "__dataclass_fields__",
+    ):
+
+        return {
+            "finding_id": finding.finding_id,
+            "finding_type": finding.finding_type,
+            "issue": finding.issue,
+            "resource": finding.resource,
+            "risk": finding.risk,
+            "description": finding.description,
+            "remediation": finding.remediation,
+        }
+
+    return finding
+def deduplicate_security_findings(findings):
+    """
+    Remove duplicate security findings.
+
+    IAM and Compliance findings describing
+    the same underlying issue are deduplicated.
+
+    CloudTrail events remain unique because
+    they have unique CloudTrail Event IDs.
+    """
+
+    unique_findings = {}
+
+    for finding in findings:
+
+        finding_type = str(
+            finding.get(
+                "finding_type",
+                ""
+            )
+        ).strip().lower()
+
+        resource = str(
+            finding.get(
+                "resource",
+                ""
+            )
+        ).strip().lower()
+
+        issue = str(
+            finding.get(
+                "issue",
+                ""
+            )
+        ).strip().lower()
+
+        # Convert findings to dictionaries
+# -----------------------------------------
+
+findings = [
+    convert_finding_to_dict(finding)
+    for finding in all_findings
+# -----------------------------------------
+        # CloudTrail
+        # -----------------------------------------
+        # Each CloudTrail event gets its own
+        # unique finding ID.
+        #
+        # Do NOT merge separate events.
+
+        if finding_type == "cloudtrail":
+
+            key = (
+                "cloudtrail",
+                finding.get(
+                    "finding_id"
+                ),
+            )
+
+        # -----------------------------------------
+        # IAM / Compliance
+        # -----------------------------------------
+        # These scanners may detect the same
+        # underlying security issue.
+        #
+        # Example:
+        #
+        # IAM:
+        # MFA Disabled
+        #
+        # Compliance:
+        # MFA Disabled
+        #
+        # Both describe the same issue.
+
+        else:
+
+            normalized_issue = issue
+
+            if "mfa" in normalized_issue:
+
+                normalized_issue = (
+                    "mfa disabled"
+                )
+
+            if (
+                "administratoraccess"
+                in normalized_issue
+                or
+                "administrator access"
+                in normalized_issue
+            ):
+
+                normalized_issue = (
+                    "administrator access"
+                )
+
+            key = (
+                normalized_issue,
+                resource,
+            )
+
+        # -----------------------------------------
+        # Add first finding
+        # -----------------------------------------
+
+        if key not in unique_findings:
+
+            unique_findings[
+                key
+            ] = finding
+
+            continue
+
+        # -----------------------------------------
+        # Compare risk
+        # -----------------------------------------
+
+        existing = unique_findings[
+            key
+        ]
+
+        risk_priority = {
+
+            "CRITICAL": 4,
+
+            "HIGH": 3,
+
+            "MEDIUM": 2,
+
+            "LOW": 1,
+
+        }
+
+        existing_risk = risk_priority.get(
+
+            str(
+                existing.get(
+                    "risk",
+                    "LOW"
+                )
+            ).upper(),
+
+            1,
+
+        )
+
+        new_risk = risk_priority.get(
+
+            str(
+                finding.get(
+                    "risk",
+                    "LOW"
+                )
+            ).upper(),
+
+            1,
+
+        )
+
+        # Keep the higher-risk finding.
+
+        if new_risk > existing_risk:
+
+            unique_findings[
+                key
+            ] = finding
+
+    removed = (
+
+        len(findings)
+
+        - len(unique_findings)
+
+    )
+
+    print(
+
+        "Duplicate security findings removed:",
+
+        removed,
+
+    )
+
+    return list(
+        unique_findings.values()
+    )
+
+class ScanService:
+    """
+    Main CloudGuardAI security scan orchestrator.
+
+    Responsibilities:
+    1. Run security scanners
+    2. Collect findings
+    3. Calculate security score
+    4. Generate AI security advice
+    5. Return structured scan results
+    """
+
+    def __init__(
+        self,
+        account_id: str | None = None,
+        regions: list[str] | None = None,
+    ):
+
+        self.account_id = (
+            account_id
+            or "unknown"
+        )
+
+        self.regions = (
+            regions
+            or ["ap-south-1"]
+        )
+
+        self.scanners = [
+            S3Scanner(),
+            IAMScanner(),
+            EC2Scanner(),
+            CloudTrailScanner(),
+            ComplianceScanner(),
+        ]
+
+    def run_full_scan(self) -> dict:
+        """
+        Run a complete CloudGuardAI security scan.
+        """
+
+        scan_started_at = (
+            datetime.now(
+                timezone.utc
+            )
+        )
+
+        print(
+            "===== CloudGuardAI Full Scan ====="
+        )
+
+        print(
+            "Account:",
+            self.account_id,
+        )
+
+        print(
+            "Regions:",
+            self.regions,
+        )
+
+        all_
+    convert_finding_to_dict(
+        finding
+    )
+
+    for finding in all_findings
+findings = deduplicate_security_findings(
+    findings
+)
+
+findings = []
+
+        scanner_errors = []
+
+        # -----------------------------------------
+        # Run scanners
+        # -----------------------------------------
+
+        for scanner in self.scanners:
+
+            scanner_name = (
+                scanner.__class__.__name__
+            )
+
+            print(
+                f"\nRunning {scanner_name}..."
+            )
+
+            try:
+
+                scanner_findings = (
+                    scanner.scan()
+                )
+
+                print(
+                    f"{scanner_name} findings:",
+                    len(
+                        scanner_findings
+                    ),
+                )
+
+                all_findings.extend(
+                    scanner_findings
+                )
+
+            except Exception as error:
+
+                error_message = str(
+                    error
+                )
+
+                print(
+                    f"{scanner_name} failed:",
+                    error_message,
+                )
+
+                scanner_errors.append(
+                    {
+                        "scanner":
+                            scanner_name,
+
+                        "error":
+                            error_message,
+                    }
+                )
+
+        # -----------------------------------------
+        # Convert findings
+        # -----------------------------------------
+
+        findings = [
+
+            convert_finding_to_dict(
+                finding
+            )
+
+            for finding in all_findings
+
+        ]
+
+        # -----------------------------------------
+        # Security Engine
+        # -----------------------------------------
+
+        score_result = (
+            calculate_security_score(
+                findings
+            )
+        )
+
+        # -----------------------------------------
+        # AI Security Advisor
+        # -----------------------------------------
+
+        print(
+            "\nGenerating AI Security Advice..."
+        )
+
+        ai_advice = []
+
+        for finding in findings:
+
+            advice = (
+                generate_security_advice(
+                    finding
+                )
+            )
+
+            ai_advice.append(
+                advice
+            )
+
+        print(
+            "AI Security Advice Generated:",
+            len(
+                ai_advice
+            ),
+        )
+
+        scan_finished_at = (
+            datetime.now(
+                timezone.utc
+            )
+        )
+
+        # -----------------------------------------
+        # Final result
+        # -----------------------------------------
+
+        result = {
+
+            "project":
+                "CloudGuardAI",
+
+            "version":
+                "3.0.0",
+
+            "scan_id":
+                f"scan-{int(scan_started_at.timestamp())}",
+
+            "account_id":
+                self.account_id,
+
+            "regions":
+                self.regions,
+
+            "scan_status":
+                "completed",
+
+            "scan_started_at":
+                scan_started_at.isoformat(),
+
+            "scan_finished_at":
+                scan_finished_at.isoformat(),
+
+            "summary":
+                score_result,
+
+            "findings":
+                findings,
+
+            "ai_advice":
+                ai_advice,
+
+            "scanner_errors":
+                scanner_errors,
+
+        }
+
+        print(
+            "\n===== FINAL CLOUDGUARD AI RESULT ====="
+        )
+
+        print(
+            "Total Findings:",
+            score_result[
+                "total_findings"
+            ],
+        )
+
+        print(
+            "Security Score:",
+            score_result[
+                "security_score"
+            ],
+        )
+
+        print(
+            "Security Grade:",
+            score_result[
+                "security_grade"
+            ],
+        )
+
+        print(
+            "Risk Summary:",
+            score_result[
+                "risk_summary"
+            ],
+        )
+
+        if scanner_errors:
+
+            print(
+                "Scanner Errors:",
+                len(
+                    scanner_errors
+                ),
+            )
+
+        return result
+
+
+def run_full_scan() -> dict:
+    """
+    Backward-compatible wrapper.
+
+    Existing API code can continue using:
+
+        run_full_scan()
+    """
+
+    scanner = ScanService()
+
+    return scanner.run_full_scan()

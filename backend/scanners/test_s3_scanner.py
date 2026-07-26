@@ -1,42 +1,81 @@
+from unittest.mock import MagicMock, patch
+
 from backend.scanners.s3_scanner import S3Scanner
 
 
-def main():
+@patch("backend.scanners.s3_scanner.boto3.client")
+def test_s3_scanner_detects_missing_public_access_block(
+    mock_client,
+):
+    mock_s3 = MagicMock()
 
-    print("===== CloudGuardAI V2 S3 Scanner =====")
+    mock_client.return_value = mock_s3
+
+    mock_s3.list_buckets.return_value = {
+        "Buckets": [
+            {
+                "Name": "test-bucket",
+            }
+        ]
+    }
+
+    mock_s3.exceptions.NoSuchPublicAccessBlockConfiguration = (
+        type(
+            "NoSuchPublicAccessBlockConfiguration",
+            (Exception,),
+            {},
+        )
+    )
+
+    mock_s3.get_public_access_block.side_effect = (
+        mock_s3.exceptions.NoSuchPublicAccessBlockConfiguration()
+    )
 
     scanner = S3Scanner()
 
     findings = scanner.scan()
 
-    print(
-        f"\nTotal S3 findings: {len(findings)}"
+    assert len(findings) == 1
+
+    assert findings[0].finding_type == "S3"
+
+    assert (
+        findings[0].issue
+        == "S3 Public Access Block Disabled"
     )
 
-    for finding in findings:
+    assert findings[0].resource == "test-bucket"
 
-        print("\nFinding:")
-
-        print("ID:", finding.finding_id)
-
-        print("Type:", finding.finding_type)
-
-        print("Issue:", finding.issue)
-
-        print("Resource:", finding.resource)
-
-        print("Risk:", finding.risk)
-
-        print(
-            "Description:",
-            finding.description
-        )
-
-        print(
-            "Remediation:",
-            finding.remediation
-        )
+    assert findings[0].risk == "CRITICAL"
 
 
-if __name__ == "__main__":
-    main()
+@patch("backend.scanners.s3_scanner.boto3.client")
+def test_s3_scanner_returns_no_findings_when_protected(
+    mock_client,
+):
+    mock_s3 = MagicMock()
+
+    mock_client.return_value = mock_s3
+
+    mock_s3.list_buckets.return_value = {
+        "Buckets": [
+            {
+                "Name": "secure-bucket",
+            }
+        ]
+    }
+
+    mock_s3.get_public_access_block.return_value = {
+        "PublicAccessBlockConfiguration": {
+            "BlockPublicAcls": True,
+            "IgnorePublicAcls": True,
+            "BlockPublicPolicy": True,
+            "RestrictPublicBuckets": True,
+        }
+    }
+
+    scanner = S3Scanner()
+
+    findings = scanner.scan()
+
+    assert findings == []

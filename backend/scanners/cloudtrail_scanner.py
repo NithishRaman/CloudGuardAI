@@ -1,3 +1,4 @@
+import json
 import boto3
 
 from backend.models.finding import SecurityFinding
@@ -40,7 +41,7 @@ CRITICAL_RISK_EVENTS = {
 
 class CloudTrailScanner:
     """
-    CloudGuardAI V2 CloudTrail security scanner.
+    CloudGuardAI CloudTrail security scanner.
     """
 
     def __init__(self):
@@ -63,6 +64,11 @@ class CloudTrailScanner:
         user = event.get(
             "Username",
             "Unknown",
+        )
+
+        event_id = event.get(
+            "EventId",
+            "unknown-event",
         )
 
         if user == "root":
@@ -97,17 +103,28 @@ class CloudTrailScanner:
                 "Moderate risk activity detected"
             )
 
+        elif event_name in LOW_RISK_EVENTS:
+
+            risk = "LOW"
+
+            reason = (
+                "Low-risk AWS activity detected"
+            )
+
         else:
 
             risk = "LOW"
 
-            reason = "Normal activity"
+            reason = (
+                "AWS activity detected. "
+                "Review if this activity "
+                "was expected."
+            )
 
         return SecurityFinding(
 
             finding_id=(
-                f"CLOUDTRAIL-{event_name}-"
-                f"{user}"
+                f"CLOUDTRAIL-{event_id}"
             ),
 
             finding_type="CloudTrail",
@@ -150,11 +167,45 @@ class CloudTrailScanner:
 
         for event in events:
 
-            finding = self.analyze_event(
-                event
+            # CloudTrail returns CloudTrailEvent
+            # as a JSON string containing
+            # additional event information.
+
+            cloudtrail_event = {}
+
+            raw_event = event.get(
+                "CloudTrailEvent"
             )
 
-            findings.append(finding)
+            if raw_event:
+
+                try:
+
+                    cloudtrail_event = json.loads(
+                        raw_event
+                    )
+
+                except (
+                    json.JSONDecodeError,
+                    TypeError,
+                ):
+
+                    cloudtrail_event = {}
+
+            # Merge useful identity information
+            # into the event object.
+
+            enriched_event = {
+                **event,
+                **cloudtrail_event,
+            }
+
+            finding = self.analyze_event(
+                enriched_event
+            )
+
+            findings.append(
+                finding
+            )
 
         return findings
-

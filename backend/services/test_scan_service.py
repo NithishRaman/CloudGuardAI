@@ -1,37 +1,56 @@
+from unittest.mock import patch
+
 from backend.services.scan_service import (
     ScanService,
 )
 
 
-def main():
+def test_scan_service_initializes():
 
     scanner = ScanService()
 
+    assert scanner is not None
+
+    assert len(
+        scanner.scanners
+    ) == 5
+
+
+@patch(
+    "backend.services.scan_service.generate_security_advice"
+)
+def test_scan_service_runs_scan(
+    mock_ai_advice,
+):
+
+    mock_ai_advice.return_value = {
+        "finding_id": "TEST-001",
+        "risk": "HIGH",
+        "priority": "HIGH",
+        "analysis": "Test analysis",
+        "recommended_action": "Test action",
+    }
+
+    scanner = ScanService()
+
+    fake_findings = []
+
+    for scan in scanner.scanners:
+
+        scan.scan = lambda: []
+
     result = scanner.run_full_scan()
 
-    print("\n===== FINAL CLOUDGUARD AI RESULT =====")
+    assert result["project"] == "CloudGuardAI"
 
-    print(
-        "Total Findings:",
-        result["total_findings"]
-    )
+    assert result["scan_status"] == "completed"
 
-    print(
-        "Security Score:",
-        result["security_score"]
-    )
+    assert result["summary"]["total_findings"] == 0
 
-    print(
-        "Security Grade:",
-        result["security_grade"]
-    )
+    assert result["summary"]["security_score"] == 100
 
-    print(
-        "Risk Summary:",
-        result["risk_summary"]
-    )
+    assert result["summary"]["security_grade"] == "A"
 
+    assert result["findings"] == []
 
-if __name__ == "__main__":
-
-    main()
+    assert result["ai_advice"] == []

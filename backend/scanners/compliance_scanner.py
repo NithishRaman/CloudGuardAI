@@ -5,7 +5,7 @@ from backend.models.finding import SecurityFinding
 
 class ComplianceScanner:
     """
-    CloudGuardAI V2 compliance scanner.
+    CloudGuardAI compliance scanner.
     """
 
     def __init__(self):
@@ -23,9 +23,9 @@ class ComplianceScanner:
 
         findings = []
 
-        # -----------------------------
+        # -----------------------------------------
         # IAM MFA Compliance Check
-        # -----------------------------
+        # -----------------------------------------
 
         users_response = (
             self.iam.list_users()
@@ -67,7 +67,7 @@ class ComplianceScanner:
                             "Compliance"
                         ),
                         issue=(
-                            "IAM MFA Enabled"
+                            "MFA Disabled"
                         ),
                         resource=username,
                         risk="HIGH",
@@ -82,9 +82,9 @@ class ComplianceScanner:
                     )
                 )
 
-        # -----------------------------
+        # -----------------------------------------
         # CloudTrail Compliance Check
-        # -----------------------------
+        # -----------------------------------------
 
         trails_response = (
             self.cloudtrail.describe_trails()
@@ -106,9 +106,11 @@ class ComplianceScanner:
                         "Compliance"
                     ),
                     issue=(
-                        "CloudTrail Enabled"
+                        "CloudTrail Disabled"
                     ),
-                    resource="AWS Account",
+                    resource=(
+                        "AWS Account"
+                    ),
                     risk="CRITICAL",
                     description=(
                         "No CloudTrail trail "
