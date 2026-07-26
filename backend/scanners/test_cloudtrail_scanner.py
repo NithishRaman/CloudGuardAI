@@ -153,3 +153,32 @@ def test_empty_cloudtrail_returns_no_findings(mock_client):
     findings = scanner.scan()
 
     assert findings == []
+@patch("backend.scanners.cloudtrail_scanner.boto3.client")
+def test_duplicate_events_are_removed(mock_client):
+
+    mock_cloudtrail = MagicMock()
+
+    mock_client.return_value = mock_cloudtrail
+
+    mock_cloudtrail.lookup_events.return_value = {
+        "Events": [
+            {
+                "EventName": "DescribeInstances",
+                "Username": "developer",
+            },
+            {
+                "EventName": "DescribeInstances",
+                "Username": "developer",
+            },
+            {
+                "EventName": "DescribeInstances",
+                "Username": "developer",
+            },
+        ]
+    }
+
+    scanner = CloudTrailScanner()
+
+    findings = scanner.scan()
+
+    assert len(findings) == 1

@@ -4,6 +4,7 @@ import boto3
 from backend.models.finding import SecurityFinding
 
 
+# Low-risk CloudTrail events
 LOW_RISK_EVENTS = {
     "DescribeAlarms",
     "DescribeInstances",
@@ -13,9 +14,16 @@ LOW_RISK_EVENTS = {
     "BackupJobCompleted",
     "RecoveryPointCreated",
     "PutCredentials",
+    "DescribeTrails",
+    "LookupEvents",
+    "GetBucketPublicAccessBlock",
+    "GetBucketAcl",
+    "DescribeACLs",
+    "GetSamplingRules",
 }
 
 
+# Medium-risk CloudTrail events
 MEDIUM_RISK_EVENTS = {
     "RunInstances",
     "StartInstances",
@@ -24,14 +32,30 @@ MEDIUM_RISK_EVENTS = {
 }
 
 
+# High-risk CloudTrail events
 HIGH_RISK_EVENTS = {
     "CreateAccessKey",
+    "DeleteAccessKey",
+    "DeleteLoginProfile",
+    "PutUserPolicy",
+    "PutRolePolicy",
+    "PutGroupPolicy",
+    "AttachUserPolicy",
+    "AttachRolePolicy",
+    "AttachGroupPolicy",
+    "DetachUserPolicy",
+    "DetachRolePolicy",
+    "DetachGroupPolicy",
+    "CreateLoginProfile",
+    "UpdateLoginProfile",
+    "DeactivateMFADevice",
     "AssociateIamInstanceProfile",
     "ReplaceIamInstanceProfileAssociation",
     "AuthorizeSecurityGroupIngress",
 }
 
 
+# Critical-risk CloudTrail events
 CRITICAL_RISK_EVENTS = {
     "DeleteUser",
     "StopLogging",
@@ -42,6 +66,9 @@ CRITICAL_RISK_EVENTS = {
 class CloudTrailScanner:
     """
     CloudGuardAI CloudTrail security scanner.
+
+    Analyzes AWS CloudTrail events and assigns
+    a security risk level.
     """
 
     def __init__(self):
@@ -71,55 +98,75 @@ class CloudTrailScanner:
             "unknown-event",
         )
 
+        # -----------------------------------------
+        # Risk classification
+        # -----------------------------------------
+
+        # Root activity is always critical.
         if user == "root":
 
             risk = "CRITICAL"
 
             reason = (
-                "Root account activity detected"
+                "Root account activity detected. "
+                "Investigate this activity immediately."
             )
 
+        # Critical security actions
         elif event_name in CRITICAL_RISK_EVENTS:
 
             risk = "CRITICAL"
 
             reason = (
-                "Critical security action detected"
+                "Critical security-sensitive AWS "
+                "activity detected."
             )
 
+        # High-risk security actions
         elif event_name in HIGH_RISK_EVENTS:
 
             risk = "HIGH"
 
             reason = (
-                "High risk IAM or network change"
+                "High-risk IAM or security "
+                "configuration activity detected."
             )
 
+        # Medium-risk security actions
         elif event_name in MEDIUM_RISK_EVENTS:
 
             risk = "MEDIUM"
 
             reason = (
-                "Moderate risk activity detected"
+                "Security-sensitive AWS activity "
+                "detected."
             )
 
+        # Known low-risk activity
         elif event_name in LOW_RISK_EVENTS:
 
             risk = "LOW"
 
             reason = (
-                "Low-risk AWS activity detected"
+                "Low-risk AWS activity detected. "
+                "Review if this activity was expected."
             )
 
+        # Unknown events are also recorded as LOW
+        # so that CloudGuardAI does not silently
+        # ignore CloudTrail activity.
         else:
 
             risk = "LOW"
 
             reason = (
                 "AWS activity detected. "
-                "Review if this activity "
-                "was expected."
+                "Review if this activity was expected."
             )
+
+        # -----------------------------------------
+        # Create security finding
+        # -----------------------------------------
 
         return SecurityFinding(
 
@@ -141,18 +188,22 @@ class CloudTrailScanner:
             description=reason,
 
             remediation=(
-                "Review this CloudTrail event "
-                "and verify that the activity "
-                "was authorized."
+                "Review the CloudTrail event and "
+                "verify that the activity was "
+                "authorized."
             ),
         )
 
     def scan(
         self,
-        max_results: int = 10,
+        max_results: int = 50,
     ) -> list[SecurityFinding]:
 
         findings = []
+
+        # -----------------------------------------
+        # Get CloudTrail events
+        # -----------------------------------------
 
         response = (
             self.cloudtrail.lookup_events(
@@ -165,11 +216,11 @@ class CloudTrailScanner:
             [],
         )
 
-        for event in events:
+        # -----------------------------------------
+        # Process events
+        # -----------------------------------------
 
-            # CloudTrail returns CloudTrailEvent
-            # as a JSON string containing
-            # additional event information.
+        for event in events:
 
             cloudtrail_event = {}
 
@@ -177,6 +228,8 @@ class CloudTrailScanner:
                 "CloudTrailEvent"
             )
 
+            # CloudTrailEvent is usually
+            # returned as a JSON string.
             if raw_event:
 
                 try:
@@ -192,9 +245,8 @@ class CloudTrailScanner:
 
                     cloudtrail_event = {}
 
-            # Merge useful identity information
-            # into the event object.
-
+            # Merge the original event with
+            # detailed CloudTrail event data.
             enriched_event = {
                 **event,
                 **cloudtrail_event,
@@ -208,4 +260,22 @@ class CloudTrailScanner:
                 finding
             )
 
-        return findings
+        # -----------------------------------------
+        # Remove duplicate findings
+        # -----------------------------------------
+
+        unique_findings = {}
+
+        for finding in findings:
+             
+             # Use the finding ID as the unique key.
+            key = finding.finding_id
+
+
+            if key not in unique_findings:
+
+                unique_findings[key] = finding
+
+        return list(
+            unique_findings.values()
+        )
