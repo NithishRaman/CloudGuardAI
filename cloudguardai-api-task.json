@@ -1,0 +1,49 @@
+{
+  "family": "cloudguardai-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::156168428975:role/CloudGuardAITaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::156168428975:role/CloudGuardAIRuntimeRole",
+  "containerDefinitions": [
+    {
+      "name": "cloudguardai-api",
+      "image": "156168428975.dkr.ecr.ap-south-1.amazonaws.com/cloudguardai-api:v2",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "AWS_REGION",
+          "value": "ap-south-1"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cloudguardai-api",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "api"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\" || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      }
+    }
+  ]
+}

@@ -39,3 +39,5 @@ tornado==6.5.7
 typing_extensions==4.16.0
 tzdata==2026.3
 urllib3==1.26.20
+fastapi
+uvicorn[standard]

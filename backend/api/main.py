@@ -9,9 +9,8 @@ app = FastAPI(
 )
 
 
-@app.get("/")
+@app.get("/api")
 def root():
-
     return {
         "project": "CloudGuardAI",
         "version": "2.0.0",
@@ -19,17 +18,14 @@ def root():
     }
 
 
-@app.get("/health")
+@app.get("/api/health")
 def health():
-
     return {
         "status": "healthy"
     }
 
 
-@app.post("/scan")
+@app.post("/api/scan")
 def scan():
-
     result = run_full_scan()
-
     return result

@@ -15,7 +15,7 @@ from backend.services.ai_advisor import (
 
 def convert_finding_to_dict(finding):
     """
-    Convert SecurityFinding dataclass into a dictionary.
+    Convert a SecurityFinding dataclass into a dictionary.
     """
 
     if hasattr(finding, "__dataclass_fields__"):
@@ -32,12 +32,59 @@ def convert_finding_to_dict(finding):
     return finding
 
 
+def is_cloudtrail_finding(finding):
+    """
+    Identify CloudTrail activity separately from
+    actual security posture findings.
+    """
+
+    if not isinstance(finding, dict):
+        return False
+
+    finding_type = str(
+        finding.get(
+            "finding_type",
+            ""
+        )
+    ).lower()
+
+    finding_id = str(
+        finding.get(
+            "finding_id",
+            ""
+        )
+    ).lower()
+
+    issue = str(
+        finding.get(
+            "issue",
+            ""
+        )
+    ).lower()
+
+    return (
+        finding_type == "cloudtrail"
+        or finding_id.startswith(
+            "cloudtrail-"
+        )
+        or "cloudtrail event" in issue
+    )
+
+
 class ScanService:
     """
     Main CloudGuardAI security scan orchestrator.
+
+    Responsibilities:
+    - Run all AWS security scanners
+    - Separate security findings from CloudTrail activity
+    - Calculate security posture
+    - Generate AI security advice
+    - Return a clean API response
     """
 
     def __init__(self):
+
         self.scanners = [
             S3Scanner(),
             IAMScanner(),
@@ -52,12 +99,13 @@ class ScanService:
             "===== CloudGuardAI Full Scan ====="
         )
 
-        all_findings = []
-        scanner_errors = []
+        # ====================================================
+        # RUN ALL SCANNERS
+        # ====================================================
 
-        # -----------------------------------------
-        # Run all scanners
-        # -----------------------------------------
+        all_findings = []
+
+        scanner_errors = []
 
         for scanner in self.scanners:
 
@@ -71,7 +119,9 @@ class ScanService:
 
             try:
 
-                scanner_findings = scanner.scan()
+                scanner_findings = (
+                    scanner.scan()
+                )
 
                 print(
                     f"{scanner_name} findings:",
@@ -84,7 +134,9 @@ class ScanService:
 
             except Exception as error:
 
-                error_message = str(error)
+                error_message = str(
+                    error
+                )
 
                 print(
                     f"{scanner_name} failed:",
@@ -93,42 +145,75 @@ class ScanService:
 
                 scanner_errors.append(
                     {
-                        "scanner": scanner_name,
-                        "error": error_message,
+                        "scanner":
+                            scanner_name,
+
+                        "error":
+                            error_message,
                     }
                 )
 
-        # -----------------------------------------
-        # Convert findings to dictionaries
-        # -----------------------------------------
+        # ====================================================
+        # CONVERT ALL FINDINGS TO DICTIONARIES
+        # ====================================================
 
-        findings = []
+        findings = [
 
-        for finding in all_findings:
-
-            finding_dict = (
-                convert_finding_to_dict(
-                    finding
-                )
+            convert_finding_to_dict(
+                finding
             )
 
-            findings.append(
-                finding_dict
+            for finding in all_findings
+
+        ]
+
+        # ====================================================
+        # SEPARATE SECURITY FINDINGS
+        # FROM CLOUDTRAIL ACTIVITY
+        # ====================================================
+
+        security_findings = [
+
+            finding
+
+            for finding in findings
+
+            if not is_cloudtrail_finding(
+                finding
             )
 
-        # -----------------------------------------
-        # Calculate security score
-        # -----------------------------------------
+        ]
+
+        cloudtrail_events = [
+
+            finding
+
+            for finding in findings
+
+            if is_cloudtrail_finding(
+                finding
+            )
+
+        ]
+
+        # ====================================================
+        # CALCULATE SECURITY SCORE
+        #
+        # Score is based ONLY on real security findings.
+        # CloudTrail activity does not reduce security score.
+        # ====================================================
 
         score_result = (
             calculate_security_score(
-                findings
+                security_findings
             )
         )
 
-        # -----------------------------------------
-        # Generate AI security advice
-        # -----------------------------------------
+        # ====================================================
+        # GENERATE AI SECURITY ADVICE
+        #
+        # Advice is generated for real security findings only.
+        # ====================================================
 
         print(
             "\nGenerating AI Security Advice..."
@@ -136,26 +221,105 @@ class ScanService:
 
         ai_advice = []
 
-        for finding in findings:
+        for finding in security_findings:
 
-            advice = (
-                generate_security_advice(
-                    finding
+            try:
+
+                advice = (
+                    generate_security_advice(
+                        finding
+                    )
                 )
-            )
 
-            ai_advice.append(
-                advice
-            )
+                ai_advice.append(
+                    advice
+                )
+
+            except Exception as error:
+
+                print(
+                    "AI advice generation failed:",
+                    str(error),
+                )
 
         print(
             "AI Security Advice Generated:",
             len(ai_advice),
         )
 
-        # -----------------------------------------
-        # Final result
-        # -----------------------------------------
+        # ====================================================
+        # BUILD CLEAN SUMMARY
+        # ====================================================
+
+        risk_summary = (
+            score_result.get(
+                "risk_summary",
+                {}
+            )
+        )
+
+        summary = {
+
+            "total_security_findings":
+                len(
+                    security_findings
+                ),
+
+            "cloudtrail_events":
+                len(
+                    cloudtrail_events
+                ),
+
+            "total_items_analyzed":
+                len(
+                    findings
+                ),
+
+            "security_score":
+                score_result.get(
+                    "security_score",
+                    0
+                ),
+
+            "security_grade":
+                score_result.get(
+                    "security_grade",
+                    "F"
+                ),
+
+            "risk_summary": {
+
+                "CRITICAL":
+                    risk_summary.get(
+                        "CRITICAL",
+                        0
+                    ),
+
+                "HIGH":
+                    risk_summary.get(
+                        "HIGH",
+                        0
+                    ),
+
+                "MEDIUM":
+                    risk_summary.get(
+                        "MEDIUM",
+                        0
+                    ),
+
+                "LOW":
+                    risk_summary.get(
+                        "LOW",
+                        0
+                    ),
+
+            },
+
+        }
+
+        # ====================================================
+        # FINAL API RESULT
+        # ====================================================
 
         result = {
 
@@ -169,10 +333,13 @@ class ScanService:
                 "completed",
 
             "summary":
-                score_result,
+                summary,
 
-            "findings":
-                findings,
+            "security_findings":
+                security_findings,
+
+            "cloudtrail_events":
+                cloudtrail_events,
 
             "ai_advice":
                 ai_advice,
@@ -182,38 +349,52 @@ class ScanService:
 
         }
 
-        # -----------------------------------------
-        # Print summary
-        # -----------------------------------------
+        # ====================================================
+        # PRINT FINAL SUMMARY
+        # ====================================================
 
         print(
             "\n===== FINAL CLOUDGUARD AI RESULT ====="
         )
 
         print(
-            "Total Findings:",
-            score_result[
-                "total_findings"
-            ],
+            "Security Findings:",
+            len(
+                security_findings
+            ),
+        )
+
+        print(
+            "CloudTrail Events:",
+            len(
+                cloudtrail_events
+            ),
+        )
+
+        print(
+            "Total Items Analyzed:",
+            len(
+                findings
+            ),
         )
 
         print(
             "Security Score:",
-            score_result[
+            summary[
                 "security_score"
             ],
         )
 
         print(
             "Security Grade:",
-            score_result[
+            summary[
                 "security_grade"
             ],
         )
 
         print(
             "Risk Summary:",
-            score_result[
+            summary[
                 "risk_summary"
             ],
         )
@@ -225,7 +406,7 @@ def run_full_scan():
     """
     Backward-compatible wrapper.
 
-    Allows existing API code to call:
+    Existing API code can continue to call:
 
         run_full_scan()
     """

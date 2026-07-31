@@ -1,0 +1,49 @@
+{
+  "family": "cloudguardai-dashboard",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::156168428975:role/CloudGuardAITaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::156168428975:role/CloudGuardAIRuntimeRole",
+  "containerDefinitions": [
+    {
+      "name": "cloudguardai-dashboard",
+      "image": "156168428975.dkr.ecr.ap-south-1.amazonaws.com/cloudguardai-dashboard:v1",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8501,
+          "hostPort": 8501,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "API_URL",
+          "value": "http://cloudguardai-alb-1929606455.ap-south-1.elb.amazonaws.com"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')\" || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cloudguardai-dashboard",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "dashboard"
+        }
+      }
+    }
+  ]
+}
