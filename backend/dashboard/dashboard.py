@@ -1,7 +1,9 @@
-import streamlit as st
-import requests
-from datetime import datetime
+import os
 from collections import Counter
+from datetime import datetime
+
+import requests
+import streamlit as st
 
 
 # ============================================================
@@ -20,12 +22,14 @@ st.set_page_config(
 # CONFIGURATION
 # ============================================================
 
-import os
+# Streamlit Cloud can override this with an Environment Variable.
+# Default points to the deployed Vercel FastAPI backend.
 
 API_URL = os.getenv(
     "API_URL",
-    "http://127.0.0.1:8000"
-)
+    "https://cloud-guard-ai-seven.vercel.app",
+).rstrip("/")
+
 
 # ============================================================
 # PROFESSIONAL CSS
@@ -34,10 +38,6 @@ API_URL = os.getenv(
 st.markdown(
     """
     <style>
-
-    /* =========================
-       GLOBAL
-    ========================= */
 
     .stApp {
         background:
@@ -64,10 +64,6 @@ st.markdown(
         color: #94a3b8;
     }
 
-    /* =========================
-       SIDEBAR
-    ========================= */
-
     section[data-testid="stSidebar"] {
         background: #090d14;
         border-right: 1px solid #1e293b;
@@ -76,10 +72,6 @@ st.markdown(
     section[data-testid="stSidebar"] h1 {
         font-size: 22px;
     }
-
-    /* =========================
-       HEADER
-    ========================= */
 
     .brand {
         font-size: 30px;
@@ -120,10 +112,6 @@ st.markdown(
         font-weight: 700;
     }
 
-    /* =========================
-       HERO
-    ========================= */
-
     .hero {
         padding: 28px;
         border-radius: 18px;
@@ -160,10 +148,6 @@ st.markdown(
         margin-top: 8px;
     }
 
-    /* =========================
-       CARDS
-    ========================= */
-
     .card {
         background: #0d131d;
         border: 1px solid #1e293b;
@@ -192,10 +176,6 @@ st.markdown(
         font-size: 12px;
         margin-top: 5px;
     }
-
-    /* =========================
-       SCORE
-    ========================= */
 
     .score-card {
         background:
@@ -238,10 +218,6 @@ st.markdown(
         letter-spacing: 1px;
     }
 
-    /* =========================
-       SEVERITY
-    ========================= */
-
     .severity-critical {
         color: #f87171;
     }
@@ -277,10 +253,6 @@ st.markdown(
         font-weight: 900;
         margin-top: 8px;
     }
-
-    /* =========================
-       FINDING
-    ========================= */
 
     .finding {
         background: #0d131d;
@@ -337,10 +309,6 @@ st.markdown(
         color: #4ade80;
     }
 
-    /* =========================
-       AI COPILOT
-    ========================= */
-
     .ai-card {
         background:
             linear-gradient(
@@ -384,10 +352,6 @@ st.markdown(
         font-size: 13px;
     }
 
-    /* =========================
-       SERVICE
-    ========================= */
-
     .service-card {
         background: #0d131d;
         border: 1px solid #1e293b;
@@ -413,19 +377,11 @@ st.markdown(
         margin-top: 5px;
     }
 
-    /* =========================
-       BUTTON
-    ========================= */
-
     .stButton > button {
         border-radius: 10px;
         font-weight: 700;
         min-height: 45px;
     }
-
-    /* =========================
-       DIVIDER
-    ========================= */
 
     hr {
         border-color: #1e293b !important;
@@ -453,28 +409,37 @@ if "last_scan" not in st.session_state:
 # ============================================================
 
 def check_api():
+    """
+    Check the deployed FastAPI backend.
+
+    Backend endpoint:
+        GET https://cloud-guard-ai-seven.vercel.app/health
+    """
 
     try:
-
         response = requests.get(
-            f"{API_URL}/api/health",
-            timeout=3
+            f"{API_URL}/health",
+            timeout=10,
         )
 
-        return response.status_code < 500
+        return response.status_code < 400
 
     except requests.RequestException:
-
         return False
 
 
 def run_scan():
+    """
+    Run AWS security scan through FastAPI.
+
+    Backend endpoint:
+        POST https://cloud-guard-ai-seven.vercel.app/scan
+    """
 
     try:
-
         response = requests.post(
-            f"{API_URL}/api/scan",
-            timeout=120
+            f"{API_URL}/scan",
+            timeout=120,
         )
 
         response.raise_for_status()
@@ -482,28 +447,44 @@ def run_scan():
         return response.json()
 
     except requests.ConnectionError:
-
         st.error(
-            "Cannot connect to FastAPI. "
-            "Make sure Uvicorn is running on port 8000."
+            "Cannot connect to the CloudGuardAI API."
         )
-
         return None
 
     except requests.Timeout:
-
         st.error(
             "The security scan timed out."
+        )
+        return None
+
+    except requests.HTTPError as e:
+        try:
+            detail = response.json()
+        except Exception:
+            detail = response.text
+
+        st.error(
+            f"API returned an error: {e}"
+        )
+
+        st.code(
+            str(detail),
+            language="json",
         )
 
         return None
 
     except requests.RequestException as e:
-
         st.error(
             f"API request failed: {e}"
         )
+        return None
 
+    except ValueError:
+        st.error(
+            "The API returned an invalid JSON response."
+        )
         return None
 
 
@@ -517,9 +498,7 @@ def get_value(data, *keys, default=None):
         return default
 
     for key in keys:
-
         if key in data:
-
             return data[key]
 
     return default
@@ -527,16 +506,18 @@ def get_value(data, *keys, default=None):
 
 def normalize_findings(data):
 
+    if not isinstance(data, dict):
+        return []
+
     findings = get_value(
         data,
         "findings",
         "security_findings",
         "results",
-        default=[]
+        default=[],
     )
 
     if not isinstance(findings, list):
-
         return []
 
     return findings
@@ -545,18 +526,14 @@ def normalize_findings(data):
 def get_severity(finding):
 
     if not isinstance(finding, dict):
-
         return "LOW"
 
-    severity = finding.get(
+    severity = get_value(
+        finding,
         "risk",
-        finding.get(
-            "severity",
-            finding.get(
-                "level",
-                "LOW"
-            )
-        )
+        "severity",
+        "level",
+        default="LOW",
     )
 
     severity = str(
@@ -567,9 +544,8 @@ def get_severity(finding):
         "CRITICAL",
         "HIGH",
         "MEDIUM",
-        "LOW"
+        "LOW",
     ]:
-
         return "LOW"
 
     return severity
@@ -584,7 +560,7 @@ def get_finding_name(finding):
             "title",
             "finding",
             "name",
-            default="Security Finding"
+            default="Security Finding",
         )
     )
 
@@ -599,7 +575,7 @@ def get_resource(finding):
             "resource_id",
             "user",
             "principal",
-            default="Unknown"
+            default="Unknown",
         )
     )
 
@@ -612,7 +588,7 @@ def get_description(finding):
             "description",
             "details",
             "message",
-            default=""
+            default="",
         )
     )
 
@@ -625,7 +601,10 @@ def get_remediation(finding):
             "remediation",
             "recommendation",
             "recommended_action",
-            default="Review this finding and apply the recommended security control."
+            default=(
+                "Review this finding and apply "
+                "the recommended security control."
+            ),
         )
     )
 
@@ -633,20 +612,19 @@ def get_remediation(finding):
 def is_cloudtrail_finding(finding):
 
     if not isinstance(finding, dict):
-
         return False
 
     finding_type = str(
         finding.get(
             "finding_type",
-            ""
+            "",
         )
     ).lower()
 
     issue = str(
         finding.get(
             "issue",
-            ""
+            "",
         )
     ).lower()
 
@@ -661,44 +639,75 @@ def calculate_counts(findings):
     counts = Counter()
 
     for finding in findings:
-
-        severity = get_severity(
-            finding
-        )
-
-        counts[severity] += 1
+        counts[get_severity(finding)] += 1
 
     return counts
 
 
 def get_score(data):
 
+    if not isinstance(data, dict):
+        return 0
+
+    summary = data.get(
+        "summary",
+        {},
+    )
+
+    if isinstance(summary, dict):
+
+        score = summary.get(
+            "security_score",
+            None,
+        )
+
+        if score is not None:
+            try:
+                return int(score)
+            except (TypeError, ValueError):
+                pass
+
     score = get_value(
         data,
         "security_score",
         "score",
-        default=0
+        default=0,
     )
 
     try:
-
         return int(score)
-
-    except:
-
+    except (TypeError, ValueError):
         return 0
 
 
 def get_grade(data):
 
-    return str(
-        get_value(
-            data,
+    if not isinstance(data, dict):
+        return "F"
+
+    summary = data.get(
+        "summary",
+        {},
+    )
+
+    if isinstance(summary, dict):
+
+        grade = summary.get(
             "security_grade",
-            "grade",
-            default="F"
+            None,
         )
-    ).upper()
+
+        if grade is not None:
+            return str(grade).upper()
+
+    grade = get_value(
+        data,
+        "security_grade",
+        "grade",
+        default="F",
+    )
+
+    return str(grade).upper()
 
 
 # ============================================================
@@ -723,8 +732,9 @@ with header_col1:
         AI-Powered AWS Security Intelligence Platform
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
+
 
 with header_col2:
 
@@ -736,7 +746,7 @@ with header_col2:
             ● API CONNECTED
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     else:
@@ -747,7 +757,7 @@ with header_col2:
             ● API OFFLINE
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
 
@@ -777,7 +787,7 @@ st.markdown(
 
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
@@ -795,23 +805,25 @@ with scan_col1:
         f"**Last Security Scan:** `{st.session_state.last_scan}`"
     )
 
+
 with scan_col2:
 
     st.markdown(
         "**Environment:** `AWS · CONNECTED`"
     )
 
+
 with scan_col3:
 
     if st.button(
         "⚡ RUN SECURITY SCAN",
-        use_container_width=True
+        use_container_width=True,
     ):
 
         if not api_online:
 
             st.error(
-                "FastAPI is offline. Start Uvicorn first."
+                "CloudGuardAI API is offline."
             )
 
         else:
@@ -845,9 +857,11 @@ with scan_col3:
 
 data = st.session_state.scan_result
 
-all_findings = normalize_findings(
-    data
-) if data else []
+all_findings = (
+    normalize_findings(data)
+    if data
+    else []
+)
 
 
 # ============================================================
@@ -855,34 +869,21 @@ all_findings = normalize_findings(
 # ============================================================
 
 security_findings = [
-
     finding
-
     for finding in all_findings
-
-    if not is_cloudtrail_finding(
-        finding
-    )
-
+    if not is_cloudtrail_finding(finding)
 ]
 
 
 cloudtrail_findings = [
-
     finding
-
     for finding in all_findings
-
-    if is_cloudtrail_finding(
-        finding
-    )
-
+    if is_cloudtrail_finding(finding)
 ]
 
 
 # ============================================================
-# DASHBOARD SUMMARY
-# READ SUMMARY DIRECTLY FROM FASTAPI
+# SUMMARY
 # ============================================================
 
 summary = {}
@@ -891,107 +892,127 @@ if isinstance(data, dict):
 
     summary = data.get(
         "summary",
-        {}
+        {},
     )
 
 if not isinstance(summary, dict):
-
     summary = {}
 
 
-# ------------------------------------------------------------
+# ============================================================
 # TOTAL FINDINGS
-# ------------------------------------------------------------
+# ============================================================
 
-total_findings = int(
-    summary.get(
-        "total_findings",
-        len(security_findings)
+try:
+
+    total_findings = int(
+        summary.get(
+            "total_findings",
+            len(security_findings),
+        )
     )
-)
+
+except (TypeError, ValueError):
+
+    total_findings = len(
+        security_findings
+    )
 
 
-# ------------------------------------------------------------
+# ============================================================
 # SECURITY SCORE
-# ------------------------------------------------------------
+# ============================================================
 
-security_score = int(
-    summary.get(
-        "security_score",
-        0
-    )
-)
+security_score = get_score(data)
 
 
-# ------------------------------------------------------------
+# ============================================================
 # SECURITY GRADE
-# ------------------------------------------------------------
+# ============================================================
 
-security_grade = str(
-    summary.get(
-        "security_grade",
-        "F"
-    )
-)
+security_grade = get_grade(data)
 
 
-# ------------------------------------------------------------
+# ============================================================
 # RISK SUMMARY
-# ------------------------------------------------------------
+# ============================================================
 
 risk_summary = summary.get(
     "risk_summary",
-    {}
+    {},
 )
 
 if not isinstance(
     risk_summary,
-    dict
+    dict,
 ):
 
     risk_summary = {}
 
 
-critical_count = int(
-    risk_summary.get(
-        "CRITICAL",
-        0
+# Support both uppercase and lowercase API responses.
+
+def risk_count(name):
+
+    value = risk_summary.get(
+        name,
+        risk_summary.get(
+            name.lower(),
+            0,
+        ),
     )
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+critical_count = risk_count(
+    "CRITICAL"
 )
 
-high_count = int(
-    risk_summary.get(
-        "HIGH",
-        0
-    )
+high_count = risk_count(
+    "HIGH"
 )
 
-medium_count = int(
-    risk_summary.get(
-        "MEDIUM",
-        0
-    )
+medium_count = risk_count(
+    "MEDIUM"
 )
 
-low_count = int(
-    risk_summary.get(
-        "LOW",
-        0
-    )
+low_count = risk_count(
+    "LOW"
 )
+
+
+# ============================================================
+# FALLBACK COUNTS
+# ============================================================
+
+# If the API doesn't provide risk_summary,
+# calculate it directly from the findings.
+
+if (
+    critical_count == 0
+    and high_count == 0
+    and medium_count == 0
+    and low_count == 0
+    and security_findings
+):
+
+    counts = calculate_counts(
+        security_findings
+    )
+
+    critical_count = counts["CRITICAL"]
+    high_count = counts["HIGH"]
+    medium_count = counts["MEDIUM"]
+    low_count = counts["LOW"]
+
 
 # ============================================================
 # SECURITY POSTURE
 # ============================================================
-
-score = get_score(
-    data
-) if data else 0
-
-grade = get_grade(
-    data
-) if data else "F"
-
 
 st.markdown(
     "## Security Posture"
@@ -1018,24 +1039,24 @@ with score_col:
         </div>
 
         <div class="score">
-        {score}<span>/100</span>
+        {security_score}<span>/100</span>
         </div>
 
         <div class="grade">
-        SECURITY GRADE · {grade}
+        SECURITY GRADE · {security_grade}
         </div>
 
         <br>
 
         <div class="card-description">
         CloudGuardAI identified
-        <b>{len(security_findings)}</b>
+        <b>{total_findings}</b>
         real security findings.
         </div>
 
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
@@ -1059,7 +1080,7 @@ with severity_col:
 
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     with c2:
@@ -1078,7 +1099,7 @@ with severity_col:
 
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     with c3:
@@ -1097,7 +1118,7 @@ with severity_col:
 
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     with c4:
@@ -1116,7 +1137,7 @@ with severity_col:
 
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
 
@@ -1134,18 +1155,13 @@ st.caption(
 
 
 priority_findings = [
-
     finding
-
     for finding in security_findings
-
-    if get_severity(
-        finding
-    ) in [
+    if get_severity(finding)
+    in [
         "CRITICAL",
-        "HIGH"
+        "HIGH",
     ]
-
 ]
 
 
@@ -1203,7 +1219,7 @@ else:
 
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
 
@@ -1216,18 +1232,13 @@ st.markdown(
 )
 
 ai_findings = [
-
     finding
-
     for finding in security_findings
-
-    if get_severity(
-        finding
-    ) in [
+    if get_severity(finding)
+    in [
         "CRITICAL",
-        "HIGH"
+        "HIGH",
     ]
-
 ]
 
 
@@ -1275,7 +1286,7 @@ if ai_findings:
 
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 else:
@@ -1299,17 +1310,11 @@ st.caption(
 
 
 services = [
-
     ("🔐", "IAM"),
-
     ("🪣", "S3"),
-
     ("🖥️", "EC2"),
-
     ("📜", "CloudTrail"),
-
     ("✅", "Compliance"),
-
 ]
 
 
@@ -1320,7 +1325,7 @@ service_cols = st.columns(
 
 for col, service in zip(
     service_cols,
-    services
+    services,
 ):
 
     icon, name = service
@@ -1345,7 +1350,7 @@ for col, service in zip(
 
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
 
@@ -1387,7 +1392,7 @@ with activity_col1:
 
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
@@ -1411,7 +1416,7 @@ with activity_col2:
 
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
@@ -1435,7 +1440,7 @@ with activity_col3:
 
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
@@ -1466,8 +1471,8 @@ with filter_col1:
             "CRITICAL",
             "HIGH",
             "MEDIUM",
-            "LOW"
-        ]
+            "LOW",
+        ],
     )
 
 
@@ -1475,7 +1480,7 @@ with filter_col2:
 
     search = st.text_input(
         "Search findings",
-        placeholder="Search finding or resource..."
+        placeholder="Search finding or resource...",
     )
 
 
@@ -1485,15 +1490,10 @@ filtered_findings = security_findings
 if severity_filter != "ALL":
 
     filtered_findings = [
-
         finding
-
         for finding in filtered_findings
-
-        if get_severity(
-            finding
-        ) == severity_filter
-
+        if get_severity(finding)
+        == severity_filter
     ]
 
 
@@ -1502,25 +1502,15 @@ if search:
     search_lower = search.lower()
 
     filtered_findings = [
-
         finding
-
         for finding in filtered_findings
-
         if search_lower in (
-            get_finding_name(
-                finding
-            )
+            get_finding_name(finding)
             + " "
-            + get_resource(
-                finding
-            )
+            + get_resource(finding)
             + " "
-            + get_description(
-                finding
-            )
+            + get_description(finding)
         ).lower()
-
     ]
 
 
@@ -1530,7 +1520,7 @@ st.caption(
 
 
 # ============================================================
-# FINDINGS TABLE
+# FINDINGS
 # ============================================================
 
 if not filtered_findings:
@@ -1583,7 +1573,7 @@ else:
                 {severity}
                 </span>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
             st.write(
@@ -1618,5 +1608,5 @@ st.markdown(
 
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
